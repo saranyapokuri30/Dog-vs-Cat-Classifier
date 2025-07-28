@@ -1,0 +1,67 @@
+import os
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, confusion_matrix
+import matplotlib.pyplot as plt
+
+# Load images
+data_dir = "/content/train"  # Corrected path to the dataset
+categories = ["cat", "dog"]
+data = []
+labels = []
+
+for category in categories:
+    path = os.path.join(data_dir, category)
+    # Check if the category directory exists before listing files
+    if not os.path.exists(path):
+        print(f"Warning: Directory not found: {path}")
+        continue
+
+    class_num = categories.index(category)
+    # Check if there are files in the directory before listing
+    if not os.listdir(path):
+        print(f"Warning: No files found in directory: {path}")
+        continue
+
+    for img_name in os.listdir(path)[:1000]:  # Limit to 1000 per class for speed
+        img_path = os.path.join(path, img_name)
+        # Add a check to ensure it's a file and not a directory or other entry
+        if not os.path.isfile(img_path):
+            continue
+
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+        # Add check for successfully loaded image
+        if img is None:
+            print(f"Warning: Could not read image file: {img_name}")
+            continue
+
+        try:
+            img = cv2.resize(img, (64, 64))
+            data.append(img.flatten())
+            labels.append(class_num)
+        except Exception as e:
+            print(f"Error processing image {img_name}: {e}")
+            continue
+
+
+# Convert to numpy and split
+X = np.array(data)
+y = np.array(labels)
+
+# Add check to ensure data is not empty before splitting
+if X.shape[0] == 0:
+    print("Error: No images were loaded. Please check the data directory and file names.")
+else:
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train SVM
+    clf = SVC(kernel='linear')
+    clf.fit(X_train, y_train)
+
+    # Predict and Evaluate
+    y_pred = clf.predict(X_test)
+    print("Accuracy:", accuracy_score(y_test, y_pred))
+    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
